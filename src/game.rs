@@ -9,6 +9,12 @@ const GAMEOVER_COLOR: Color = [0.90, 0.00, 0.00, 0.5];
 const MOVING_PERIOD: f64 = 0.1;
 const RESTART_TIME: f64 = 1.0;
 
+#[derive(PartialEq)]
+pub enum GameState {
+    Menu,
+    Playing,
+}
+#[derive(PartialEq)]
 pub struct Game {
     snake: Snake,
     food_exists: bool,
@@ -18,6 +24,7 @@ pub struct Game {
     height: i32,
     game_over: bool,
     waiting_time: f64,
+    pub state: GameState,
 }
 impl Game {
     pub fn new(width: i32, height: i32) -> Game {
@@ -30,6 +37,29 @@ impl Game {
             height,
             game_over: false,
             waiting_time: 0.0,
+            state: GameState::Menu,
+        }
+    }
+    pub fn draw(&self, con: &Context, g: &mut G2d) {
+        match self.state {
+            GameState::Menu => {
+                draw_rectangle(BORDER_COLOR, 0, 0, self.width, self.height, con, g);
+                draw_rectangle(BORDER_COLOR, 1, 1, self.width - 2, self.height - 2, con, g);
+                draw_rectangle(BORDER_COLOR, 2, 2, self.width - 4, self.height- 4, con, g);
+            },
+            GameState::Playing => {
+                self.snake.draw(con, g);
+                if self.food_exists {
+                    draw_block(FOOD_COLOR, self.food_x, self.food_y, con, g);
+                }
+                draw_rectangle(BORDER_COLOR, 0, 0, self.width, 1, con, g);
+                draw_rectangle(BORDER_COLOR, 0, self.height - 1, self.width, 1, con, g);
+                draw_rectangle(BORDER_COLOR, 0, 0, 1, self.height, con, g);
+                draw_rectangle(BORDER_COLOR, self.width - 1, 0, 1, self.height, con, g);
+                if self.game_over {
+                    draw_rectangle(GAMEOVER_COLOR, 0, 0, self.width, self.height, con, g);
+                }
+            },
         }
     }
     pub fn key_pressed(&mut self, key: Key) {
@@ -48,33 +78,32 @@ impl Game {
         }
         self.update_snake(dir);
     }
-    pub fn draw(&self, con: &Context, g: &mut G2d) {
-        self.snake.draw(con, g);
-        if self.food_exists {
-            draw_block(FOOD_COLOR, self.food_x, self.food_y, con, g);
-        }
-        draw_rectangle(BORDER_COLOR, 0, 0, self.width, 1, con, g);
-        draw_rectangle(BORDER_COLOR, 0, self.height - 1, self.width, 1, con, g);
-        draw_rectangle(BORDER_COLOR, 0, 0, 1, self.height, con, g);
-        draw_rectangle(BORDER_COLOR, self.width - 1, 0, 1, self.height, con, g);
-        if self.game_over {
-            draw_rectangle(GAMEOVER_COLOR, 0, 0, self.width, self.height, con, g);
-        }
-    }
     pub fn update(&mut self, delta_time: f64) {
         self.waiting_time += delta_time;
-        if self.game_over {
-            if self.waiting_time > RESTART_TIME {
-                self.restart();
+        if self.state == GameState::Menu {
+            if self.waiting_time > MOVING_PERIOD {
+                self.state = GameState::Playing;
+                self.waiting_time = 0.0;
             }
-            return;
         }
+        if self.state == GameState::Playing {
+            if self.waiting_time > MOVING_PERIOD {
+                self.update_snake(None);
+            }
+        }
+        
         if !self.food_exists {
             self.add_food();
         }
         if self.waiting_time > MOVING_PERIOD {
             self.update_snake(None);
         }
+    }
+    pub fn toggle_state(&mut self) {
+        self.state = match self.state {
+            GameState::Menu => GameState::Playing,
+            GameState::Playing => GameState::Menu,
+        };
     }
     fn check_eating(&mut self) {
         let (head_x, head_y): (i32, i32) = self.snake.head_position();

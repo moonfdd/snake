@@ -22,10 +22,12 @@ impl Direction {
     }
 }
 #[derive(Debug, Clone)]
+#[derive(PartialEq)]
 struct Block {
     x: i32,
     y: i32,
 }
+#[derive(PartialEq)]
 pub struct Snake {
     direction: Direction,
     body: LinkedList<Block>,
